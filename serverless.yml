@@ -1,0 +1,42 @@
+service: photon
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: ${opt:stage, 'prod'}
+  timeout: 20
+  region: eu-west-1
+  apiGateway:
+    shouldStartNameWithService: true
+  environment:
+    stage: ${self:provider.stage}
+  layers:
+    - { Ref: SharpLambdaLayer }
+
+functions:
+  onTheFly:
+    handler: src/handler.onTheFly
+    events:
+      - http:
+          path: /{path+}
+          method: get
+
+useDotenv: true
+
+plugins:
+  - serverless-webpack
+  - serverless-offline
+  - serverless-apigw-binary
+
+custom:
+  serverless-offline:
+    httpPort: 8500
+    lambdaPort: 3005
+    noPrependStageInUrl: true
+  webpack:
+    webpackConfig: 'webpack.config.js'
+    packager: 'npm'
+    includeModules: true
+  apigwBinary:
+    types:
+      - 'image/*'
