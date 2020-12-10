@@ -1,6 +1,7 @@
 import type { APIGatewayEvent } from 'aws-lambda'
 import axios from 'axios'
 import sharp from 'sharp'
+import { Headers } from './utils/http'
 
 export const onTheFly = async (event: APIGatewayEvent) => {
   const url = event.requestContext.path?.replace(/^\//, '')
@@ -10,8 +11,14 @@ export const onTheFly = async (event: APIGatewayEvent) => {
     responseType: 'arraybuffer',
   })
 
-  const format = 'jpeg'
-  const out = await sharp(data).resize(200).toFormat(format).toBuffer()
+  const format = new Headers(event.headers).get('accept')?.includes('webp')
+    ? 'webp'
+    : 'jpeg'
+  const size = parseInt(event.queryStringParameters?.width ?? '256')
+  const out = await sharp(data)
+    .resize(size, size, { withoutEnlargement: true })
+    .toFormat(format)
+    .toBuffer()
 
   try {
     return {
