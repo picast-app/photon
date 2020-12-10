@@ -8,8 +8,15 @@ provider:
   region: eu-west-1
   apiGateway:
     shouldStartNameWithService: true
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:*
+      Resource:
+        - ${ssm:/echo/s3/imgs/arn}
   environment:
     stage: ${self:provider.stage}
+    BUCKET_NAME: picast-imgs
   layers:
     - arn:aws:lambda:eu-west-1:818838602878:layer:sharp:1
 
@@ -21,6 +28,12 @@ functions:
           path: /{path+}
           method: GET
           contentHandling: CONVERT_TO_BINARY
+  resize:
+    handler: src/handler.resize
+    events:
+      - sns:
+          arn: ${ssm/echo/sns/resize/ar}
+          maximumRetryAttempts: 2
 
 useDotenv: true
 
