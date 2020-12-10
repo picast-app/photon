@@ -1,5 +1,6 @@
 const slsw = require('serverless-webpack')
 const path = require('path')
+const nodeExternals = require('webpack-node-externals')
 
 module.exports = {
   entry: slsw.lib.entries,
@@ -19,6 +20,9 @@ module.exports = {
       '~': path.resolve(__dirname, 'src'),
     },
   },
+  externals: slsw.lib.webpack.isLocal
+    ? [nodeExternals()]
+    : ['aws-sdk', 'sharp'],
   module: {
     rules: [
       {
