@@ -32,7 +32,7 @@ functions:
     handler: src/handler.resize
     events:
       - sns:
-          arn: ${ssm/echo/sns/resize/ar}
+          arn: ${ssm:/echo/sns/resize/arn}
           maximumRetryAttempts: 2
 
 useDotenv: true
