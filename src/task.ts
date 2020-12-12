@@ -10,8 +10,14 @@ export type Task = {
 
 type Format = 'png' | 'jpeg' | 'webp'
 
-const TO_SIZES = [128, 256, 512, 1024]
-const TO_FORMATS: Format[] = ['jpeg', 'webp']
+type Output = { format: Format; size: number }
+let outputs: Output[] = [
+  { format: 'jpeg', size: 512 },
+  ...[180, 360, 256, 512, 1024].map((size) => ({
+    format: 'webp' as Format,
+    size,
+  })),
+]
 
 export default async function handleTask(task: Task) {
   const raw = await download(task.url)
@@ -21,10 +27,20 @@ export default async function handleTask(task: Task) {
   const meta = await img.metadata()
   const maxSize = Math.min(meta.width, meta.height)
 
-  const sizes =
-    maxSize >= TO_SIZES.slice(-1)[0]
-      ? TO_SIZES
-      : [...TO_SIZES.filter((n) => n < maxSize), maxSize]
+  outputs = (maxSize >= Math.max(...outputs.map(({ size }) => size))
+    ? outputs
+    : outputs.map(({ format, size }) => ({
+        format,
+        size: Math.min(size, maxSize),
+      }))
+  ).filter(
+    (v, i) =>
+      outputs.findIndex(
+        ({ size, format }) => size === v.size && format === v.format
+      ) === i
+  )
+
+  const sizes = Array.from(new Set(outputs.map(({ size }) => size)))
 
   const out = sizes
     .map((size) => ({
@@ -35,22 +51,25 @@ export default async function handleTask(task: Task) {
       }),
     }))
     .flatMap(({ img, size }) =>
-      TO_FORMATS.map((format) => ({
-        img: toFormat(img.clone(), format),
-        size,
-        format,
-      }))
+      outputs
+        .filter((out) => out.size === size)
+        .map(({ format }) => ({
+          size,
+          format,
+          img: toFormat(img.clone(), format),
+        }))
     )
 
-  await Promise.allSettled(
+  const res = await Promise.allSettled(
     out.map(({ img, size, format }) =>
-      img
-        .toBuffer()
-        .then((data) =>
-          s3.upload(`${task.podcast}/art-${size}.${format}`, data)
-        )
+      img.toBuffer().then((data) => {
+        const key = `${task.podcast}/art-${size}.${format}`
+        console.log(`upload ${key} to ${process.env.BUCKET_NAME}`)
+        return s3.upload(key, data)
+      })
     )
   )
+  console.log(res)
 }
 
 function toFormat(img: Sharp, format: Format) {
