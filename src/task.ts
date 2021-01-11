@@ -1,6 +1,7 @@
 import download from './utils/download'
 import sharp, { Sharp } from 'sharp'
 import * as s3 from './utils/s3'
+import db from './utils/db'
 
 export type Task = {
   podcast: string
@@ -60,16 +61,25 @@ export default async function handleTask(task: Task) {
         }))
     )
 
-  const res = await Promise.allSettled(
+  const key = (size: number, format: Format) =>
+    `${task.podcast}/art-${size}.${format}`
+
+  const upload = Promise.all(
     out.map(({ img, size, format }) =>
       img.toBuffer().then((data) => {
-        const key = `${task.podcast}/art-${size}.${format}`
         console.log(`upload ${key} to ${process.env.BUCKET_NAME}`)
-        return s3.upload(key, data)
+        return s3.upload(key(size, format), data)
       })
     )
   )
-  console.log(res)
+
+  const art = out.map(({ size, format }) => key(size, format)) as [
+    string,
+    ...string[]
+  ]
+  const persist = db.update(task.podcast, { art })
+
+  await Promise.all([upload, persist])
 }
 
 function toFormat(img: Sharp, format: Format) {
