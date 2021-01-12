@@ -1,7 +1,7 @@
 import download from './utils/download'
 import sharp, { Sharp } from 'sharp'
 import * as s3 from './utils/s3'
-import db from './utils/db'
+import initDB from '@picast-app/db'
 
 export type Task = {
   podcast: string
@@ -19,6 +19,15 @@ let outputs: Output[] = [
     size,
   })),
 ]
+
+const db = initDB(
+  process.env.IS_OFFLINE
+    ? {
+        region: 'localhost',
+        endpoint: 'http://localhost:8000',
+      }
+    : undefined
+)
 
 export default async function handleTask(task: Task) {
   const raw = await download(task.url)
@@ -73,11 +82,9 @@ export default async function handleTask(task: Task) {
     )
   )
 
-  const art = out.map(({ size, format }) => key(size, format)) as [
-    string,
-    ...string[]
-  ]
-  const persist = db.update(task.podcast, { art })
+  const art = out.map(({ size, format }) => key(size, format))
+
+  const persist = db.podcasts.update(task.podcast, { art })
 
   await Promise.all([upload, persist])
 }

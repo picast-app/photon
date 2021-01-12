@@ -5,10 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start:offline": "node --max-old-space-size=4096 node_modules/serverless/bin/serverless offline start --noTimeout",
-    "logs": "sls logs -f photon",
-    "logs:watch": "sls logs -f photon -t",
+    "logs": "sls logs -f resize",
+    "logs:watch": "sls logs -f resize -t",
     "deploy": "sls deploy",
-    "deploy:function": "sls deploy function -f photon",
     "prettier:check": "prettier --check \"./*.ts\" \"./**/*.ts\"",
     "prettier:write": "prettier --write \"./*.ts\" \"./**/*.ts\"",
     "eslint:check": "eslint . --ext .ts",
@@ -21,6 +20,7 @@
   "license": "ISC",
   "dependencies": {
     "@babel/runtime": "^7.12.5",
+    "@picast-app/db": "^1.1.1",
     "apollo": "^2.31.1",
     "apollo-server-lambda": "^2.19.0",
     "axios": "^0.21.1",
