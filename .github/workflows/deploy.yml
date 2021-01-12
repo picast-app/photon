@@ -19,7 +19,7 @@ jobs:
       - name: Cache node modules
         uses: actions/cache@v1
         env:
-          cache-name: cache-node-modules
+          cache-name: cache-node-modules-${{ secrets.CACHE_BUST }}
         with:
           path: ~/.npm
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
@@ -29,7 +29,10 @@ jobs:
             ${{ runner.os }}-
 
       - name: Install Dependencies
-        run: npm install
+        run: |
+          echo "${{ secrets.NPMRC }}" > .npmrc
+          cat .npmrc
+          npm install
 
       - name: Deploy
         env:
