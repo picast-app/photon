@@ -76,15 +76,16 @@ export default async function handleTask(task: Task) {
   const upload = Promise.all(
     out.map(({ img, size, format }) =>
       img.toBuffer().then((data) => {
-        console.log(`upload ${key} to ${process.env.BUCKET_NAME}`)
+        console.log(`upload ${key(size, format)} to ${process.env.BUCKET_NAME}`)
         return s3.upload(key(size, format), data)
       })
     )
   )
 
-  const art = out.map(({ size, format }) => key(size, format))
-
-  const persist = db.podcasts.update(task.podcast, { art })
+  const covers = out.map(({ size, format }) => key(size, format))
+  if (!covers.length) return
+  console.log(covers)
+  const persist = db.podcasts.update(task.podcast, { covers })
 
   await Promise.all([upload, persist])
 }

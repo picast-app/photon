@@ -31,7 +31,6 @@ jobs:
       - name: Install Dependencies
         run: |
           echo "${{ secrets.NPMRC }}" > .npmrc
-          cat .npmrc
           npm install
 
       - name: Deploy
