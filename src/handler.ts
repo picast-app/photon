@@ -40,6 +40,7 @@ export const onTheFly = async (event: APIGatewayEvent) => {
       headers: {
         'Content-Type': `image/${format}`,
         'Cache-Control': 'public, max-age=2592000, immutable',
+        'Access-Control-Allow-Origin': 'https://picast.app',
       },
       body: out.toString('base64'),
       isBase64Encoded: true,
