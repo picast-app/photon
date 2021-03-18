@@ -27,6 +27,7 @@ provider:
 functions:
   onTheFly:
     handler: src/handler.onTheFly
+    memorySize: 512
     events:
       - http:
           path: /{path+}
@@ -34,6 +35,7 @@ functions:
           contentHandling: CONVERT_TO_BINARY
   resize:
     handler: src/handler.resize
+    memorySize: 512
     events:
       - sns:
           arn: ${ssm:/echo/sns/resize/arn}

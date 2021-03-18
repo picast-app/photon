@@ -2,6 +2,8 @@ import download from './utils/download'
 import sharp, { Sharp } from 'sharp'
 import * as s3 from './utils/s3'
 import initDB from '@picast-app/db'
+import Vibrant from 'node-vibrant'
+import { performance } from 'perf_hooks'
 
 export type Task = {
   podcast: string
@@ -73,11 +75,21 @@ export default async function handleTask(task: Task) {
   const key = (size: number, format: Format) =>
     `${task.podcast}/art-${size}.${format}`
 
+  let palette: Record<string, string> | undefined = undefined
+
   const upload = Promise.all(
     out.map(({ img, size, format }) =>
       img.toBuffer().then((data) => {
         console.log(`upload ${key(size, format)} to ${process.env.BUCKET_NAME}`)
-        return s3.upload(key(size, format), data)
+        const tasks: Promise<any>[] = []
+        tasks.push(s3.upload(key(size, format), data))
+        if (size === 512 && format === 'jpeg')
+          tasks.push(
+            extractColors(data).then((v) => {
+              palette = v
+            })
+          )
+        return Promise.all(tasks)
       })
     )
   )
@@ -85,7 +97,10 @@ export default async function handleTask(task: Task) {
   const covers = out.map(({ size, format }) => key(size, format))
   if (!covers.length) return
   console.log(covers)
-  const persist = db.podcasts.update(task.podcast, { covers })
+  const persist = db.podcasts.update(task.podcast, {
+    covers,
+    ...(palette && { palette }),
+  })
 
   await Promise.all([upload, persist])
 }
@@ -101,4 +116,17 @@ function toFormat(img: Sharp, format: Format) {
     default:
       throw `unknown format type ${format}`
   }
+}
+
+async function extractColors(img: Buffer) {
+  const t0 = performance.now()
+  const palette = await Vibrant.from(img).getPalette()
+  console.log(`colors extracted in ${Math.round(performance.now() - t0)}ms`)
+
+  return Object.fromEntries(
+    Object.entries(palette).map(([k, v]) => [
+      k[0].toLowerCase + k.slice(1),
+      v.hex,
+    ])
+  )
 }
