@@ -1,7 +1,7 @@
 import download from './utils/download'
 import sharp, { Sharp } from 'sharp'
 import * as s3 from './utils/s3'
-import initDB from '@picast-app/db'
+import initDB, { meta as dbMeta } from '@picast-app/db'
 import Vibrant from 'node-vibrant'
 import { performance } from 'perf_hooks'
 
@@ -96,13 +96,17 @@ export default async function handleTask(task: Task) {
 
   const covers = out.map(({ size, format }) => key(size, format))
   if (!covers.length) return
-  console.log(covers)
-  const persist = db.podcasts.update(task.podcast, {
-    covers,
-    ...(palette && { palette }),
-  })
 
-  await Promise.all([upload, persist])
+  async function persist() {
+    const existing = await db.podcasts.get(task.podcast)
+    const update = { covers, ...(palette && { palette }) }
+    await db.podcasts.update(task.podcast, {
+      ...update,
+      ...(existing && { check: dbMeta.check({ ...existing, ...update }) }),
+    })
+  }
+
+  await Promise.all([upload, persist()])
 }
 
 function toFormat(img: Sharp, format: Format) {
@@ -125,7 +129,7 @@ async function extractColors(img: Buffer) {
 
   return Object.fromEntries(
     Object.entries(palette).map(([k, v]) => [
-      k[0].toLowerCase + k.slice(1),
+      k[0].toLowerCase() + k.slice(1),
       v.hex,
     ])
   )
