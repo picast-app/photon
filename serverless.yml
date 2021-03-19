@@ -18,9 +18,15 @@ provider:
         - dynamodb:*
       Resource:
         - ${ssm:/echo/ddb/podcasts/arn}
+    - Effect: 'Allow'
+      Action:
+        - 'sns:Publish'
+      Resource:
+        - ${ssm:/echo/sns/clientpush/arn}
   environment:
     stage: ${self:provider.stage}
     BUCKET_NAME: picast-imgs
+    SNS_ARN: ${ssm:/echo/sns/clientpush/arn}
   layers:
     - arn:aws:lambda:eu-west-1:818838602878:layer:sharp:1
 

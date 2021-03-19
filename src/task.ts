@@ -4,6 +4,7 @@ import * as s3 from './utils/s3'
 import initDB, { meta as dbMeta } from '@picast-app/db'
 import Vibrant from 'node-vibrant'
 import { performance } from 'perf_hooks'
+import { SNS } from 'aws-sdk'
 
 export type Task = {
   podcast: string
@@ -76,13 +77,16 @@ export default async function handleTask(task: Task) {
     `${task.podcast}/art-${size}.${format}`
 
   let palette: Record<string, string> | undefined = undefined
+  const keys: string[] = []
 
   const upload = Promise.all(
     out.map(({ img, size, format }) =>
       img.toBuffer().then((data) => {
-        console.log(`upload ${key(size, format)} to ${process.env.BUCKET_NAME}`)
+        const k = key(size, format)
+        console.log(`upload ${k} to ${process.env.BUCKET_NAME}`)
+        keys.push(k)
         const tasks: Promise<any>[] = []
-        tasks.push(s3.upload(key(size, format), data))
+        tasks.push(s3.upload(k, data))
         if (size === 512 && format === 'jpeg')
           tasks.push(
             extractColors(data).then((v) => {
@@ -107,6 +111,18 @@ export default async function handleTask(task: Task) {
   }
 
   await Promise.all([upload, persist()])
+
+  await new SNS()
+    .publish({
+      Message: JSON.stringify({
+        type: 'HAS_COVERS',
+        podcast: task.podcast,
+        covers: keys,
+        palette,
+      }),
+      TopicArn: process.env.SNS_ARN,
+    })
+    .promise()
 }
 
 function toFormat(img: Sharp, format: Format) {
