@@ -41,7 +41,7 @@ functions:
           contentHandling: CONVERT_TO_BINARY
   resize:
     handler: src/handler.resize
-    memorySize: 512
+    memorySize: 1024
     events:
       - sns:
           arn: ${ssm:/echo/sns/resize/arn}
